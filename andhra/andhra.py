@@ -587,17 +587,21 @@ class Station:
     def __fetch_pdf(self, lang):
         target = getattr(self, lang)
         dir_ = getattr(self, '%s_dir' % lang)
-
+        print(self.dist_num)
+        print(self.ac_num)
         logger.warning('Requesting %s download link...' % lang.capitalize())
         soup = self.session.post(target=target, district=self.dist_num, ac=self.ac_num)
+        #print(soup)
+        script = soup.find('a').get('href')
+        print(script)
 
-        script = soup.find('script')
         if script is None:
             logger.warning('Could not parse %s download link in response!' % lang.capitalize())
             raise ExitRequested
 
         try:
-            link = FIND_PDF_REGEX.findall(script.text)[0]
+            link = FIND_PDF_REGEX.findall(script)[0]
+            #link ='https://ceoaperolls.ap.gov.in/AP_Eroll/Popuppage?partNumber=1&roll=EnglishMotherRoll&districtName=DIST_02&acname=11&acnameeng=A11&acno=11&acnameurdu=011'
 
         except IndexError:
             logger.warning('No %s download link responded!' % lang.capitalize())
@@ -636,7 +640,7 @@ def main():
     except (KeyboardInterrupt, ExitRequested):
         pass
     finally:
-        session.save_track()
+        #session.save_track()
         logger.warning('Exited!')
 
 
