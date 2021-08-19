@@ -8,7 +8,21 @@ from copy import deepcopy
 from bs4 import BeautifulSoup
 from config import ANDHRA_TRACK_DIR, ANDHRA_PDF_ENGLISH_DIR, ANDHRA_PDF_TELUGU_DIR
 from helpers import getpath, timestamp, TRACK_FILE_TS, urlparse, urljoin, append_csv, relpath, randf, tailstr
+from selenium import webdriver
+import json
+from PIL import Image
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.common.exceptions import NoSuchElementException
+from urllib.request import urlopen
 
+import cv2
+import pytesseract
+from PIL import Image
+import urllib.request
+import time
 # Assignment
 ASSIGNED_DISTRICTS = []
 ASSIGNED_ID = 0
@@ -584,35 +598,134 @@ class Station:
         self.english_file = None
         self.download()
 
+    def expand_shadow_element(self,driver,element):
+        shadow_root = driver.execute_script('return arguments[0].shadowRoot', element)
+        return shadow_root
+
+    def __bypass_captcha(self,url):
+
+        chrome_options = webdriver.ChromeOptions()
+        settings = {
+            "recentDestinations": [{
+                "id": "Save as PDF",
+                "origin": "local",
+                "account": "",
+            }],
+            "selectedDestinationId": "Save as PDF",
+            "version": 2
+        }
+        prefs = {'printing.print_preview_sticky_settings.appState': json.dumps(settings)}
+        chrome_options.add_experimental_option('prefs', prefs)
+        chrome_options.add_argument('--kiosk-printing')
+        driver = webdriver.Chrome(options = chrome_options, executable_path="/Users/jalend15/opt/miniconda3/lib/python3.8/site-packages/selenium/webdriver/chrome/chromedriver")
+        driver.get(url)
+        image = driver.find_element_by_id('form1').screenshot("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/aa.png")
+
+        image = cv2.imread('/Users/jalend15/PycharmProjects/electoral_rolls/andhra/aa.png')
+        image = cv2.resize(image, (0, 0), fx=1.2, fy=2)
+        #cv2.imwrite("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/cc.png", image)
+
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        #cv2.imwrite("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/cc.png", gray)
+
+        gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
+
+        #cv2.imwrite("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/dd.png", gray)
+
+        filename = "{}.png".format("temp")
+        cv2.imwrite(filename, gray)
+        text = pytesseract.image_to_string(Image.open('temp.png'))
+        #print(text)
+
+        captchaEntry = driver.find_element_by_id('txtVerificationCode')
+        submitButton = driver.find_element_by_id('btnSubmit')
+
+        captchaEntry.send_keys(text[18:24])
+        submitButton.click();
+
+        delay = 10  # seconds
+        try:
+            captchamsg = driver.find_element_by_id('lblCaptchaMessage');
+            if(captchamsg):
+                print('sss')
+                #self.__bypass_captcha(url)
+        except NoSuchElementException:
+                print("Element does not exist")
+                try:
+                    time.sleep(10)
+
+                    driver.execute_script('window.print();')
+                    time.sleep(20)
+
+                    #
+                    # root1 = driver.find_element_by_css_selector('pdf-viewer')
+                    # shadow_root1 = self.expand_shadow_element(driver, root1)
+                    #
+                    #
+                    # root2 = shadow_root1.find_element_by_css_selector('toolbar')
+                    # shadow_root2 = self.expand_shadow_element(driver, root2)
+                    #
+                    # root3 = shadow_root2.find_element_by_css_selector('downloads')
+                    # shadow_root3 = self.expand_shadow_element(driver, root3)
+                    #
+                    # search_button = shadow_root3.find_element_by_css_selector("download")
+                    # search_button.click()
+
+
+                except TimeoutException:
+                     print("Loading took too much time!")
+        driver.quit()
+
     def __fetch_pdf(self, lang):
         target = getattr(self, lang)
         dir_ = getattr(self, '%s_dir' % lang)
-        print(self.dist_num)
-        print(self.ac_num)
+        # print(self.dist_name)
+        # print(self.ac_num)
+        # print(self.ac_name)
+        # print(self.num)
+
+        temp = self.ac_num
+
+
+        URL = ANDHRA_BASE_URL + '/Popuppage?'
+        partnumber = 'partNumber='+self.num
+        roll = 'roll=' + lang.capitalize() + 'MotherRoll'
+        districtname = 'districtName=DIST_'+  str(self.dist_num).zfill(2)
+        acname ='acname='+ temp
+        acnameeng = 'acnameeng=A'+ temp
+        acno = 'acno='+ temp
+        acnameurdu = 'acnameurdu=' + str(temp).zfill(3)
+
+        finalurl = URL + partnumber + '&' + roll + '&' +districtname + '&' + acname + '&' + acnameeng + '&' + acno + '&' + acnameurdu
+
+        print(finalurl)
+        self.__bypass_captcha(finalurl)
+
+
         logger.warning('Requesting %s download link...' % lang.capitalize())
-        soup = self.session.post(target=target, district=self.dist_num, ac=self.ac_num)
-        #print(soup)
-        script = soup.find('a').get('href')
-        print(script)
-
-        if script is None:
-            logger.warning('Could not parse %s download link in response!' % lang.capitalize())
-            raise ExitRequested
-
-        try:
-            link = FIND_PDF_REGEX.findall(script)[0]
-            #link ='https://ceoaperolls.ap.gov.in/AP_Eroll/Popuppage?partNumber=1&roll=EnglishMotherRoll&districtName=DIST_02&acname=11&acnameeng=A11&acno=11&acnameurdu=011'
-
-        except IndexError:
-            logger.warning('No %s download link responded!' % lang.capitalize())
-            file = None
-            setattr(self, '%s_soup' % lang, soup)
-            setattr(self, '%s_file' % lang, file)
-
-        else:
-            file = self.session.fetch(query=link, dest=dir_)
-            setattr(self, '%s_soup' % lang, soup)
-            setattr(self, '%s_file' % lang, file)
+        # soup = self.session.post(target=target, district=self.dist_num, ac=self.ac_num)
+        # #print(soup)
+        # script = soup.find('a').get('href')
+        # print(script)
+        #
+        # if script is None:
+        #     logger.warning('Could not parse %s download link in response!' % lang.capitalize())
+        #     raise ExitRequested
+        #
+        # try:
+        #     link = FIND_PDF_REGEX.findall(script)[0]
+        #     #link ='https://ceoaperolls.ap.gov.in/AP_Eroll/Popuppage?partNumber=1&roll=EnglishMotherRoll&districtName=DIST_02&acname=11&acnameeng=A11&acno=11&acnameurdu=011'
+        #
+        # except IndexError:
+        #     logger.warning('No %s download link responded!' % lang.capitalize())
+        #     file = None
+        #     setattr(self, '%s_soup' % lang, soup)
+        #     setattr(self, '%s_file' % lang, file)
+        #
+        # else:
+        #     file = self.session.fetch(query=link, dest=dir_)
+        #     setattr(self, '%s_soup' % lang, soup)
+        #     setattr(self, '%s_file' % lang, file)
 
     def download(self):
         logger.warning('Processing: Station "%s-%s", AC "%s", District "%s"...' % (
