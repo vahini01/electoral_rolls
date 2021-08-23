@@ -17,7 +17,7 @@ from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.common.exceptions import NoSuchElementException
 from urllib.request import urlopen
-
+import os
 import cv2
 import pytesseract
 from PIL import Image
@@ -52,7 +52,9 @@ ANDHRA_BASE_URL = 'https://ceoaperolls.ap.gov.in/AP_Eroll'
 FIND_PDF_REGEX = re.compile(r"open\('(.+)',")
 OUTPUT_FILE = getpath(ANDHRA_TRACK_DIR, 'Andhra{}-{}.csv'.format(ASSIGNED_ID or '', timestamp(TRACK_FILE_TS)))
 DOWNLOAD_FAILED = 'Not available / Unable to download'
-TRACK_FILE = getpath('cache/andhra{}_track.bin'.format(ASSIGNED_ID or ''))
+TRACK_FILE = getpath('cache/andhra{}.txt'.format(ASSIGNED_ID or ''))
+
+print(TRACK_FILE)
 CSV_HEADER = (
     'district_name',
     'ac_name',
@@ -66,8 +68,8 @@ CSV_HEADER = (
 # Log settings
 MAX_LOG_SIZE = 52428800
 LOG_BACKUP_COUNT = 5
-LOG_FILE = getpath('/Users/jalend15/PycharmProjects/electoral_rolls/andhra/logs/andhra.log'.format(ASSIGNED_ID or ''))
-
+LOG_FILE = getpath('/Users/jalend15/PycharmProjects/electoral_rolls/andhra/logs/andhra{}.log'.format(ASSIGNED_ID or ''))
+print(LOG_FILE)
 
 def log_configurer():
     root = logging.getLogger()
@@ -101,8 +103,11 @@ class Track:
         self.initialize()
         if ENABLE_RESUME:
             if os.path.isfile(TRACK_FILE):
+             try:
                 with open(TRACK_FILE, 'rb') as file:
                     self._data.update(pickle.load(file))
+             except EOFError:
+                 self.data = None
 
     def initialize(self):
         self._data = {
@@ -441,6 +446,7 @@ class Andhra:
         if not os.path.isfile(self.session.track.output):
             append_csv(self.session.track.output, CSV_HEADER)
 
+
         logger.warning('Finding Districts...')
         self.session.track.set_cur_step(0)
         self.soup = self.session.get()
@@ -457,10 +463,14 @@ class Andhra:
 
         logger.warning('Found %s Districts.' % (len(options) - 1))
         done_dist = self.session.track.get_done_dist()
+        #done_dist = 2
+
+        print(options)
 
         for option in options[1:]:
             dist_num = option.get('value')
             dist_name = option.text.strip()
+            print(option)
             if ASSIGNED_DISTRICTS and int(dist_num) not in ASSIGNED_DISTRICTS:
                 logger.warning('Skipped District "%s" (Not Assigned)' % dist_name)
                 continue
@@ -501,6 +511,7 @@ class District:
 
         logger.warning('Found %s ACs for District "%s".' % (len(options) - 1, self.name))
         done_ac = self.session.track.get_done_ac()
+        #done_ac = 12
 
         for option in options[1:]:
             ac_num = option.get('value')
@@ -554,6 +565,8 @@ class AC:
         logger.warning('Found %s Stations for AC "%s" of District "%s".' % (len(tr) - 1, self.name, self.dist_name))
 
         done_station = self.session.track.get_done_station()
+        #done_station=13
+        print(done_station)
         for row in tr[1:]:
 
             td = row.find_all('td')
@@ -602,8 +615,10 @@ class Station:
         shadow_root = driver.execute_script('return arguments[0].shadowRoot', element)
         return shadow_root
 
-    def __bypass_captcha(self,url):
+    def __bypass_captcha(self,url, language):
 
+
+     while(1):
         chrome_options = webdriver.ChromeOptions()
         settings = {
             "recentDestinations": [{
@@ -638,39 +653,43 @@ class Station:
         #print(text)
 
         captchaEntry = driver.find_element_by_id('txtVerificationCode')
-        submitButton = driver.find_element_by_id('btnSubmit')
-
         captchaEntry.send_keys(text[18:24])
-        submitButton.click();
+        wait = WebDriverWait(driver, 10)
+        element = wait.until(EC.element_to_be_clickable((By.ID, 'btnSubmit')))
+        element.click()
+        # submitButton = driver.find_element_by_id('btnSubmit')
+        #
+        #
+        # submitButton.click()
+
+
 
         delay = 10  # seconds
         try:
             captchamsg = driver.find_element_by_id('lblCaptchaMessage');
             if(captchamsg):
-                print('sss')
+                print('Captcha entered is incorrect')
                 #self.__bypass_captcha(url)
         except NoSuchElementException:
-                print("Element does not exist")
+                print("Captcha Passed")
                 try:
-                    time.sleep(10)
+                    secs=10
+                    time.sleep(secs)
+                    driver.implicitly_wait(secs)
+
 
                     driver.execute_script('window.print();')
-                    time.sleep(20)
 
-                    #
-                    # root1 = driver.find_element_by_css_selector('pdf-viewer')
-                    # shadow_root1 = self.expand_shadow_element(driver, root1)
-                    #
-                    #
-                    # root2 = shadow_root1.find_element_by_css_selector('toolbar')
-                    # shadow_root2 = self.expand_shadow_element(driver, root2)
-                    #
-                    # root3 = shadow_root2.find_element_by_css_selector('downloads')
-                    # shadow_root3 = self.expand_shadow_element(driver, root3)
-                    #
-                    # search_button = shadow_root3.find_element_by_css_selector("download")
-                    # search_button.click()
+                    time.sleep(secs)
 
+
+
+                    old_file_name = "/Users/jalend15/Downloads/Popuppage.pdf"
+                    new_file_name = "/Users/jalend15/Downloads/" + language.capitalize() + "_distno_" + self.dist_num + "_acno_" + self.ac_num + "_partno_" + self.num+".pdf"
+
+                    os.rename(old_file_name, new_file_name)
+                    driver.implicitly_wait(secs)
+                    break;
 
                 except TimeoutException:
                      print("Loading took too much time!")
@@ -699,33 +718,34 @@ class Station:
         finalurl = URL + partnumber + '&' + roll + '&' +districtname + '&' + acname + '&' + acnameeng + '&' + acno + '&' + acnameurdu
 
         print(finalurl)
-        self.__bypass_captcha(finalurl)
-
+       # self.__bypass_captcha(finalurl,lang)
 
         logger.warning('Requesting %s download link...' % lang.capitalize())
-        # soup = self.session.post(target=target, district=self.dist_num, ac=self.ac_num)
-        # #print(soup)
-        # script = soup.find('a').get('href')
-        # print(script)
-        #
-        # if script is None:
-        #     logger.warning('Could not parse %s download link in response!' % lang.capitalize())
-        #     raise ExitRequested
-        #
-        # try:
-        #     link = FIND_PDF_REGEX.findall(script)[0]
-        #     #link ='https://ceoaperolls.ap.gov.in/AP_Eroll/Popuppage?partNumber=1&roll=EnglishMotherRoll&districtName=DIST_02&acname=11&acnameeng=A11&acno=11&acnameurdu=011'
-        #
-        # except IndexError:
-        #     logger.warning('No %s download link responded!' % lang.capitalize())
-        #     file = None
-        #     setattr(self, '%s_soup' % lang, soup)
-        #     setattr(self, '%s_file' % lang, file)
-        #
-        # else:
-        #     file = self.session.fetch(query=link, dest=dir_)
-        #     setattr(self, '%s_soup' % lang, soup)
-        #     setattr(self, '%s_file' % lang, file)
+
+
+        soup = self.session.post(target=target, district=self.dist_num, ac=self.ac_num)
+
+        script = soup.find('script')
+
+
+        if script is None:
+            logger.warning('Could not parse %s download link in response!' % lang.capitalize())
+            raise ExitRequested
+
+        try:
+            link = FIND_PDF_REGEX.findall(script.text)[0]
+            #link ='https://ceoaperolls.ap.gov.in/AP_Eroll/Popuppage?partNumber=1&roll=EnglishMotherRoll&districtName=DIST_02&acname=11&acnameeng=A11&acno=11&acnameurdu=011'
+
+        except IndexError:
+            logger.warning('No %s download link responded!' % lang.capitalize())
+            file = None
+            setattr(self, '%s_soup' % lang, soup)
+            setattr(self, '%s_file' % lang, file)
+
+        else:
+            file = self.session.fetch(query=link, dest=dir_)
+            setattr(self, '%s_soup' % lang, soup)
+            setattr(self, '%s_file' % lang, file)
 
     def download(self):
         logger.warning('Processing: Station "%s-%s", AC "%s", District "%s"...' % (
@@ -742,7 +762,12 @@ class Station:
             relpath(self.english_file) if self.english_file is not None else DOWNLOAD_FAILED
         )
         append_csv(self.session.track.output, row)
+        print(self.num)
         self.session.track.set_done_station(self.num)
+        done_station = self.session.track.get_done_station()
+        print(done_station)
+        self.session.save_track()
+
 
 
 def main():
@@ -751,9 +776,11 @@ def main():
     try:
         site.download()
     except (KeyboardInterrupt, ExitRequested):
+        session.save_track()
+        print("keyboard")
         pass
     finally:
-        #session.save_track()
+        session.save_track()
         logger.warning('Exited!')
 
 
