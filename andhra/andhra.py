@@ -52,7 +52,7 @@ ANDHRA_BASE_URL = 'https://ceoaperolls.ap.gov.in/AP_Eroll'
 FIND_PDF_REGEX = re.compile(r"open\('(.+)',")
 OUTPUT_FILE = getpath(ANDHRA_TRACK_DIR, 'Andhra{}-{}.csv'.format(ASSIGNED_ID or '', timestamp(TRACK_FILE_TS)))
 DOWNLOAD_FAILED = 'Not available / Unable to download'
-TRACK_FILE = getpath('cache/andhra{}.txt'.format(ASSIGNED_ID or ''))
+TRACK_FILE = getpath('cache/andhra{}_track.bin'.format(ASSIGNED_ID or ''))
 
 print(TRACK_FILE)
 CSV_HEADER = (
@@ -465,12 +465,12 @@ class Andhra:
         done_dist = self.session.track.get_done_dist()
         #done_dist = 2
 
-        print(options)
+
 
         for option in options[1:]:
             dist_num = option.get('value')
             dist_name = option.text.strip()
-            print(option)
+
             if ASSIGNED_DISTRICTS and int(dist_num) not in ASSIGNED_DISTRICTS:
                 logger.warning('Skipped District "%s" (Not Assigned)' % dist_name)
                 continue
@@ -566,7 +566,7 @@ class AC:
 
         done_station = self.session.track.get_done_station()
         #done_station=13
-        print(done_station)
+
         for row in tr[1:]:
 
             td = row.find_all('td')
@@ -632,6 +632,8 @@ class Station:
         prefs = {'printing.print_preview_sticky_settings.appState': json.dumps(settings)}
         chrome_options.add_experimental_option('prefs', prefs)
         chrome_options.add_argument('--kiosk-printing')
+        chrome_options.add_argument('headless');
+
         driver = webdriver.Chrome(options = chrome_options, executable_path="/Users/jalend15/opt/miniconda3/lib/python3.8/site-packages/selenium/webdriver/chrome/chromedriver")
         driver.get(url)
         image = driver.find_element_by_id('form1').screenshot("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/aa.png")
@@ -673,7 +675,7 @@ class Station:
         except NoSuchElementException:
                 print("Captcha Passed")
                 try:
-                    secs=10
+                    secs= 20
                     time.sleep(secs)
                     driver.implicitly_wait(secs)
 
@@ -686,10 +688,13 @@ class Station:
 
                     old_file_name = "/Users/jalend15/Downloads/Popuppage.pdf"
                     new_file_name = "/Users/jalend15/Downloads/" + language.capitalize() + "_distno_" + self.dist_num + "_acno_" + self.ac_num + "_partno_" + self.num+".pdf"
+                    if(os.path.isfile(old_file_name)):
+                        os.rename(old_file_name, new_file_name)
+                        driver.implicitly_wait(secs)
+                        break;
+                    else:
+                        print("Loading took too much time!")
 
-                    os.rename(old_file_name, new_file_name)
-                    driver.implicitly_wait(secs)
-                    break;
 
                 except TimeoutException:
                      print("Loading took too much time!")
@@ -718,9 +723,9 @@ class Station:
         finalurl = URL + partnumber + '&' + roll + '&' +districtname + '&' + acname + '&' + acnameeng + '&' + acno + '&' + acnameurdu
 
         print(finalurl)
-       # self.__bypass_captcha(finalurl,lang)
+        self.__bypass_captcha(finalurl,lang)
 
-        logger.warning('Requesting %s download link...' % lang.capitalize())
+        logger.warning('Downloading %s PDF...' % lang.capitalize())
 
 
         soup = self.session.post(target=target, district=self.dist_num, ac=self.ac_num)
@@ -762,10 +767,10 @@ class Station:
             relpath(self.english_file) if self.english_file is not None else DOWNLOAD_FAILED
         )
         append_csv(self.session.track.output, row)
-        print(self.num)
+
         self.session.track.set_done_station(self.num)
         done_station = self.session.track.get_done_station()
-        print(done_station)
+
         self.session.save_track()
 
 
@@ -777,7 +782,7 @@ def main():
         site.download()
     except (KeyboardInterrupt, ExitRequested):
         session.save_track()
-        print("keyboard")
+        print("Keyboard interrupt")
         pass
     finally:
         session.save_track()
