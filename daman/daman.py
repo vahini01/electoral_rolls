@@ -8,6 +8,7 @@ import requests
 import pandas as pd
 from tqdm import tqdm
 
+# use selenium to navigate and download the files.
 
 MAX_RETRY = 5
 PDF_PATH = 'daman_pdfs'
@@ -18,23 +19,24 @@ def download_file(url, target):
     """
 
     # Streaming, so we can iterate over the response.
-    r = requests.get(url, stream=True)
-
-    if r.status_code == 200:
-        chunk_size = (64 * 1024)
-        # Total size in bytes.
-        total_size = int(r.headers.get('content-length', 0)) / chunk_size
-
-        total_size += 1
-
-        with open(target, 'wb') as f:
-            for data in tqdm(r.iter_content(chunk_size), total=total_size,
-                             unit_scale=chunk_size/1024, unit='KB'):
-                f.write(data)
-        return True
-    else:
-        print("ERROR: status_code={0:d}".format(r.status_code))
-        return False
+    # r = requests.get(url, stream=True)
+    #
+    # if r.status_code == 200:
+    #     chunk_size = (64 * 1024)
+    #     # Total size in bytes.
+    #     total_size = int(r.headers.get('content-length', 0)) / chunk_size
+    #
+    #     total_size += 1
+    #
+    #     with open(target, 'wb') as f:
+    #         for data in tqdm(r.iter_content(chunk_size), total=total_size,
+    #                          unit_scale=chunk_size/1024, unit='KB'):
+    #             f.write(data)
+    #     return True
+    # else:
+    #     print("ERROR: status_code={0:d}".format(r.status_code))
+    #     return False
+    return true
 
 
 def scrape_daman():
@@ -46,7 +48,7 @@ def scrape_daman():
     """
 
     rows = []
-    for lang in ['English', 'Gujarati']:
+    for lang in ['English']:
         for no in range(1, 140):
             url = 'http://ceodaman.nic.in/Final-Photo-Electoral-Roll-2017' \
                   '/pdf/{lang:s}/A00100{no:02d}.PDF'.format(lang=lang, no=no)

@@ -51,6 +51,7 @@ ANDHRA_BASE_URL = 'https://ceoaperolls.ap.gov.in/AP_Eroll'
 # Parsing & saving
 FIND_PDF_REGEX = re.compile(r"open\('(.+)',")
 OUTPUT_FILE = getpath(ANDHRA_TRACK_DIR, 'Andhra{}-{}.csv'.format(ASSIGNED_ID or '', timestamp(TRACK_FILE_TS)))
+print(OUTPUT_FILE)
 DOWNLOAD_FAILED = 'Not available / Unable to download'
 TRACK_FILE = getpath('cache/andhra{}_track.bin'.format(ASSIGNED_ID or ''))
 
@@ -68,7 +69,7 @@ CSV_HEADER = (
 # Log settings
 MAX_LOG_SIZE = 52428800
 LOG_BACKUP_COUNT = 5
-LOG_FILE = getpath('/Users/jalend15/PycharmProjects/electoral_rolls/andhra/logs/andhra{}.log'.format(ASSIGNED_ID or ''))
+LOG_FILE = getpath('/Users/vahini/Desktop/btp/electoral_rolls/andhra/logs/andhra{}.log'.format(ASSIGNED_ID or ''))
 print(LOG_FILE)
 
 def log_configurer():
@@ -632,22 +633,18 @@ class Station:
         prefs = {'printing.print_preview_sticky_settings.appState': json.dumps(settings)}
         chrome_options.add_experimental_option('prefs', prefs)
         chrome_options.add_argument('--kiosk-printing')
-        chrome_options.add_argument('headless');
+        # chrome_options.add_argument('headless');
 
-        driver = webdriver.Chrome(options = chrome_options, executable_path="/Users/jalend15/opt/miniconda3/lib/python3.8/site-packages/selenium/webdriver/chrome/chromedriver")
+        driver = webdriver.Chrome(options = chrome_options, executable_path="/usr/local/bin/chromedriver")
         driver.get(url)
-        image = driver.find_element_by_id('form1').screenshot("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/aa.png")
+        image = driver.find_element_by_id('form1').screenshot("/Users/vahini/Desktop/btp/electoral_rolls/andhra/aa.png")
 
-        image = cv2.imread('/Users/jalend15/PycharmProjects/electoral_rolls/andhra/aa.png')
+        image = cv2.imread('/Users/vahini/Desktop/btp/electoral_rolls/andhra/aa.png')
         image = cv2.resize(image, (0, 0), fx=1.2, fy=2)
-        #cv2.imwrite("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/cc.png", image)
 
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        #cv2.imwrite("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/cc.png", gray)
 
         gray = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY | cv2.THRESH_OTSU)[1]
-
-        #cv2.imwrite("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/dd.png", gray)
 
         filename = "{}.png".format("temp")
         cv2.imwrite(filename, gray)
@@ -686,8 +683,8 @@ class Station:
 
 
 
-                    old_file_name = "/Users/jalend15/Downloads/Popuppage.pdf"
-                    new_file_name = "/Users/jalend15/Downloads/" + language.capitalize() + "_distno_" + self.dist_num + "_acno_" + self.ac_num + "_partno_" + self.num+".pdf"
+                    old_file_name = "/Users/vahini/Downloads/Popuppage.pdf"
+                    new_file_name = "/Users/vahini/Downloads/" + language.capitalize() + "_distno_" + self.dist_num + "_acno_" + self.ac_num + "_partno_" + self.num+".pdf"
                     if(os.path.isfile(old_file_name)):
                         os.rename(old_file_name, new_file_name)
                         driver.implicitly_wait(secs)

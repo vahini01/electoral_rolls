@@ -8,7 +8,7 @@ import urllib.request
 
 
 
-driver = webdriver.Chrome("/Users/jalend15/opt/miniconda3/lib/python3.8/site-packages/selenium/webdriver/chrome/chromedriver")
+driver = webdriver.Chrome("/Users/vahini/opt/miniconda3/lib/python3.8/site-packages/selenium/webdriver/chrome/chromedriver")
 
 driver.get('https://ceoaperolls.ap.gov.in/AP_Eroll/Popuppage?partNumber=1&roll=EnglishMotherRoll&districtName=DIST_03&acname=22&acnameeng=A22&acno=22&acnameurdu=022')
 
@@ -19,9 +19,9 @@ image= driver.find_element_by_id('form1').screenshot("/Users/jalend15/Desktop/aa
 URL ='https://ceoaperolls.ap.gov.in/AP_Eroll/Popuppage?partNumber=1&roll=EnglishMotherRoll&districtName=DIST_03&acname=22&acnameeng=A22&acno=22&acnameurdu=022'
 
 
-image = cv2.imread('/Users/jalend15/Desktop/aa.png')
+image = cv2.imread('/Users/vahini/Desktop/aa.png')
 image = cv2.resize(image, (0, 0), fx=1.2, fy=2)
-cv2.imwrite("/Users/jalend15/PycharmProjects/electoral_rolls/andhra/cc.png", image)
+cv2.imwrite("/Users/vahini/PycharmProjects/electoral_rolls/andhra/cc.png", image)
 
 
 gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

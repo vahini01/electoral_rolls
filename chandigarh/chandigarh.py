@@ -9,6 +9,8 @@ import pandas as pd
 from tqdm import tqdm
 from bs4 import BeautifulSoup
 from selenium import webdriver
+import json
+
 
 
 MAX_RETRY = 5
@@ -73,13 +75,30 @@ def scrape_charadigarh():
 
     rows = []
     # Please make sure phantomjs executable available in PATH setting.
-    driver = webdriver.PhantomJS()
+    # driver = webdriver.PhantomJS()
+    # driver.get("http://ceochandigarh.nic.in/webpages/Polling2.aspx")
+    chrome_options = webdriver.ChromeOptions()
+    settings = {
+        "recentDestinations": [{
+            "id": "Save as PDF",
+            "origin": "local",
+            "account": "",
+        }],
+        "selectedDestinationId": "Save as PDF",
+        "version": 2
+    }
+    prefs = {'printing.print_preview_sticky_settings.appState': json.dumps(settings)}
+    chrome_options.add_experimental_option('prefs', prefs)
+    chrome_options.add_argument('--kiosk-printing')
+    # chrome_options.add_argument('headless');
+
+    driver = webdriver.Chrome(options = chrome_options, executable_path="/usr/local/bin/chromedriver")
     driver.get("http://ceochandigarh.nic.in/webpages/Polling2.aspx")
     element = driver.find_element_by_xpath("//a[@id='ContentPlaceHolder1_lnkCompletelist']")
     element.click()
     html = driver.page_source
     driver.quit()
-    
+
     dfs = pd.read_html(html,
                       attrs={'id': 'ContentPlaceHolder1_grdPollingStation'},
                       header=0)
