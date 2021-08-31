@@ -12,6 +12,10 @@ import urllib
 import sys
 sys.path.insert(0, '../tools/')
 import utils
+import ssl
+import requests
+import wget
+import os
 
 
 def getDistrict(m_url, element):
@@ -20,14 +24,24 @@ def getDistrict(m_url, element):
     num_D = len(mySelect_D.options)  # Start from 1, 0 -- Select
     return driver, mySelect_D, num_D
 
+def download_file_W_goa(pdf_url, mdir, filename, flag=False):
+    filename = mdir + filename
+    ssl._create_default_https_context = ssl._create_unverified_context
+    wget.download(pdf_url, filename)
+    if os.stat(filename).st_size == 0:
+        flag = 0
+    else:
+        flag = 1
+    return flag
 
-m_url = "http://ceogoa.nic.in/appln/uil/ElectoralRoll.aspx"
-base_url = 'http://ceogoa.nic.in/PDF/EROLL/2017/'
-mdir = '../data/Goa/'
+
+m_url = "https://ceogoa.nic.in/appln/uil/ElectoralRoll.aspx"
+base_url = 'https://ceogoa.nic.in/PDF/EROLL/MOTHERROLL/2021/'
+mdir = 'data/Goa/'
 driver, _, num_D = getDistrict(m_url, 'ctl00_Main_drpAC')
 driver.quit()
 
-i_start = 1
+i_start = 20
 j_start = 1
 for i in range(i_start, num_D):
     driver, mySelect_D, _ = getDistrict(m_url, "ctl00_Main_drpAC")
@@ -35,26 +49,24 @@ for i in range(i_start, num_D):
     # Click button
     driver.find_element_by_css_selector('#ctl00_Main_btnSearch').click()
     time.sleep(1)
-    # Get HTML data from page
-    html = driver.page_source
-    soup = BeautifulSoup(html, "lxml")
-    # Locate table
-    table = soup.find('table', {'class': 'mGridView'})
-    rows = soup.findAll('tr')
-    n_rows = len(rows)
-    driver.quit()
+    # Get Corresponding element
+    id = str(i+1)
+    path = "//html/body/form/div[3]/div[3]/div/div[5]/div/div[{}]".format(id)+"/div/*"
+    n_rows = len(driver.find_elements_by_xpath(path))-2
+    # driver.quit()
     for j in range(j_start, n_rows):
         print("\n", i, j)
-        p1 = format(i, '03d')
-        p2 = format(j, '02d')
-        suffix = "AC{}/Part{}.pdf".format(p1, p2)
+        suffix = "{}/S05A{}P{}.pdf".format(i,i, j)
         url = base_url + suffix
+        print(url)
         fid = suffix.replace("/", "_")
         try:
-            flag = utils.download_file_W(url, mdir, fid)
+            flag = download_file_W_goa(url, mdir, fid)
             if flag == 0:
                 with open("goa.txt", "a") as myfile:
                     myfile.write(url + '\n')
         except urllib.error.HTTPError:
+            print("Error")
             with open("goa.txt", "a") as myfile:
                 myfile.write(url + '\n')
+    driver.quit()

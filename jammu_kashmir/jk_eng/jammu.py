@@ -57,44 +57,11 @@ def checkComplete(ctr):
     else:
         return False
 
-def get_captcha_text(location, size):
-    # pytesseract.pytesseract.tesseract_cmd = 'C:/Program Files (x86)/Tesseract-OCR/tesseract'
-    # im = Image.open('screenshot.png') # uses PIL library to open image in memory
-    #
-    # left = location['x']
-    # top = location['y']
-    # right = location['x'] + size['width']
-    # bottom = location['y'] + size['height']
-    #
-    #
-    # im = im.crop((left, top, right, bottom)) # defines crop points
-    # im.save('screenshot.png')
-    print(f"#{captcha_text}#")
-    return captcha_text
-
-def bypass_captcha(driver):
+def get_captcha_text(driver):
     #find part of the page you want image of
     element = driver.find_element_by_xpath('//*[@id="Panel1"]/center/div/img')
-    location = element.location
-    size = element.size
-    driver.save_screenshot('screenshot.png')
-    im = Image.open('screenshot.png') # uses PIL library to open image in memory
-    #
-    left = location['x']
-    top = location['y']
-    right = location['x'] + size['width']
-    bottom = location['y'] + size['height']
-
-
-    im = im.crop((left, top, right, bottom)) # defines crop points
-    im.save('screenshot.png')
-    # image = element.screenshot_as_png
-    # imageStream = io.BytesIO(image)
-    # im = image.open(imageStream)
     element.screenshot('test.png')
     captcha_text = pytesseract.image_to_string(Image.open('test.png'))
-        import pdb; pdb.set_trace()
-    captcha_text = "text"
     return captcha_text
 
 
@@ -136,13 +103,44 @@ for i in range(i_start, num_D):
             # Bypass captcha
             driver.set_window_position(0, 0)
             driver.set_window_size(1024, 768)
-            text = bypass_captcha(driver)
+            # while(1) :
+                # driver, mySelect_D, num_D = getDistrict(driver, "DistlistP")
+                # if i != i_start:
+                #     driver, mySelect_P, mySelect_C, mySelect_D = refresh(m_url, i, 0, 0, flag="D")
+                # else:
+                #     mySelect_D.options[i].click()
+                # driver, mySelect_C, num_C = getDistrict(driver, "AclistP")
+                # if j != 1:
+                #     driver, mySelect_P, mySelect_C, mySelect_D = refresh(m_url, i, j, k)
+                # else:
+                #     mySelect_C.options[j].click()
+                # driver, mySelect_P, num_P = getDistrict(driver, "PslistP")
+                #
+                # mySelect_D.options[i].click()
+                # mySelect_C.options[j].click()
+                # mySelect_P.options[k].click()
+            text = get_captcha_text(driver)
             print(text)
             # Enter captcha
-
+            captchaEntry = driver.find_element_by_id('txtinput')
+            captchaEntry.send_keys(text)
             # # Click button
             wait = WebDriverWait(driver, 10)
             element = wait.until(EC.element_to_be_clickable((By.ID, 'BtnPs')))
+            element.click()
+            # check whether captcha is correct or not
+            delay = 10  # seconds
+            try:
+                captchamsg = driver.find_element_by_id('invalidcaptcha');
+                if(captchamsg):
+                    print('Captcha entered is incorrect')
+                    # k = k -1
+                    # continue
+                    #self.__bypass_captcha(url)
+            except NoSuchElementException:
+                    print("Captcha Passed")
+                    break
+
             # driver.find_element_by_css_selector('#BtnPs').click()
             try:
                 button = driver.find_element_by_xpath('//*[@id="LnkFile"]')
